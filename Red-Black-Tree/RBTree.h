@@ -4,11 +4,11 @@ template<typename T>
 struct Node
 {
 public:
-	std::unique_ptr<Node<T>> Left{};
-	std::unique_ptr<Node<T>> Right{};
+	std::shared_ptr<Node<T>> Left{};
+	std::shared_ptr<Node<T>> Right{};
 	T Value{};
 	bool isRed{};
-	Node(T val, std::unique_ptr<Node<T>> l = nullptr, std::unique_ptr<Node<T>> r = nullptr, bool isR = true)
+	Node(T val, std::shared_ptr<Node<T>> l = nullptr, std::shared_ptr<Node<T>> r = nullptr, bool isR = true)
 	{
 		Value = val;
 		Left = std::move(l);
@@ -21,17 +21,18 @@ template<typename T>
 class RBTree
 {
 public: 
-	std::unique_ptr<Node<T>> Root{};
+	std::shared_ptr<Node<T>> Root{};
 	int Count{};
 	RBTree();
 	void Add(T val);
 	void Remove(T val);
 private:
-	std::unique_ptr<Node<T>> add(T val, Node<T>* curr);
-	void FlipColor(Node<T>* node);
-	void RotateLeft(Node<T>* node);
-	void RotateRight(Node<T>* node);
-	
+	std::shared_ptr<Node<T>> add(T val, std::shared_ptr<Node<T>> curr);
+	void FlipColor(std::shared_ptr<Node<T>> node);
+	std::shared_ptr<Node<T>> RotateLeft(std::shared_ptr<Node<T>> node);
+	std::shared_ptr<Node<T>> RotateRight(std::shared_ptr<Node<T>> node);
+	std::shared_ptr<Node<T>> MoveRedLeft(std::shared_ptr<Node<T>> node);
+	std::shared_ptr<Node<T>> MoveRedRight(std::shared_ptr<Node<T>> node);
 };
 
 template<typename T>
@@ -44,82 +45,72 @@ RBTree<T>::RBTree()
 template<typename T>
 void RBTree<T>::Add(T val)
 {
-	if (!Root)
-	{
-		Root = std::make_unique<Node<T>>(val);
-	}
-	else
-	{
-		Root = add(val, Root.get());
-	}
+	Root = add(val, Root);
+	Root->isRed = false;
 	Count++;
 }
 
 template<typename T>
-std::unique_ptr<Node<T>> RBTree<T>::add(T val, Node<T>* curr)
+std::shared_ptr<Node<T>> RBTree<T>::add(T val, std::shared_ptr<Node<T>> curr)
 {
 	if (!curr)
 	{
 		return std::move(std::make_unique<Node<T>>(val));
 	}
-	if (curr->Left->isRed && curr->Right->isRed)
+	if (curr->Right && curr->Left && curr->Left->isRed && curr->Right->isRed)
 	{
 		FlipColor(curr);
 	}
 	if (val < curr->Value)
 	{
-		curr->Left = add(val, curr->Left.get());
+		curr->Left = add(val, curr->Left);
 	}
 	else if (val >= curr->Value)
 	{
-		curr->Right = add(val, curr->Right.get());
+		curr->Right = add(val, curr->Right);
 	}
-	if (curr->Right->isRed)
+	if (curr->Right && curr->Right->isRed)
 	{
-		RotateLeft(curr);
+		curr = std::move(RotateLeft(curr));
 	}
-	if (curr->Left->isRed && curr->Left->Left->isRed)
+	if (curr->Left && curr->Left->Left && curr->Left->isRed && curr->Left->Left->isRed)
 	{
-		RotateRight(curr);
+		curr = std::move(RotateRight(curr));
 	}
 
-	return std::move(std::make_unique<Node<T>>(curr->Value));
+	return curr;
 }
 
 template<typename T>
-void RBTree<T>::RotateLeft(Node<T>* node)
+std::shared_ptr<Node<T>> RBTree<T>::RotateLeft(std::shared_ptr<Node<T>> node)
 {
-	auto curr = node->Right.get();
-	
+	auto curr = node->Right;
+	curr->isRed = node->isRed;
+	node->isRed = true;
 	node->Right = std::move(curr->Left);
-	curr->Left = std::move(std::make_unique<Node<T>>(node));
-	bool t = curr->isRed;
-	curr->isRed = node->isRed;
-	node->isRed = t;
-	if (node->Value == Root->Value)
-	{
-		Root = std::move(std::make_unique<Node<T>>(node));
-	}
+
+	auto TempN = node;
+	curr->Left = std::move(TempN);
+	
+	return curr;
 }
 
 template<typename T>
-void RBTree<T>::RotateRight(Node<T>* node)
+std::shared_ptr<Node<T>> RBTree<T>::RotateRight(std::shared_ptr<Node<T>> node)
 {
-	auto curr = node->Left.get();
-
-	node->Left = std::move(curr->Right);
-	curr->Right = std::move(std::make_unique<Node<T>>(node));
-	bool t = curr->isRed;
+	auto curr = node->Left;
 	curr->isRed = node->isRed;
-	node->isRed = t;
-	if (node->Value == Root->Value)
-	{
-		Root = std::move(std::make_unique<Node<T>>(node));
-	}
+	node->isRed = true;
+	node->Left = std::move(curr->Right);
+
+	auto TempN = node;
+	curr->Right = std::move(TempN);
+
+	return curr;
 }
 
 template<typename T>
-void RBTree<T>::FlipColor(Node<T>* node)
+void RBTree<T>::FlipColor(std::shared_ptr<Node<T>> node)
 {
 	node->isRed = !node->isRed;
 	if (node->Left)
