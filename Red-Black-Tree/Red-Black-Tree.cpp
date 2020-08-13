@@ -4,7 +4,14 @@
 
 #include <iostream>
 #include "RBTree.h"
-
+template<typename T>
+void Print(std::vector<T>& a)
+{
+    for (size_t i = 0; i < a.size(); i++)
+    {
+        std::cout << a.at(i) << " ";
+    }
+}
 int main()
 {
     RBTree<int> tree;
@@ -12,7 +19,11 @@ int main()
     tree.Add(10);
     tree.Add(7);
     tree.Add(5);
-
+    tree.Add(3);
+    tree.Add(8);
+    tree.Remove(5);
+    auto v = tree.PreOrder();
+    Print(v);
     return 0;
 }
 
